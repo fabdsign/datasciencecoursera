@@ -1,0 +1,166 @@
+---
+title: "Severe Weather Impact on Human Life and Economy of USA from 1950 to 2011"
+output: html_document
+---
+June 2015  
+by **Fabio Ventola**  
+
+###Synopsis  
+This document presents an analysis of National Oceanicn and Atmospheric Administration (NOAA) data on severe weather events.  
+The goal is to identify the most harmful atmospheric phenomenon impacting public health
+and costs of evenient damages in order to identify proper policies of public and economical safety for the future.
+The data from NOAA for this analysis were collected in USA between 1950 and 2011.
+In the **"Data Processing"** section we will load and process the data while the **"Results"** will be
+presented in a dedicated section.  
+All the necessary documents and files are available in a public [Github Repository](https://github.com/fabdsign/datasciencecoursera) in order to facilitate the reproducibility of the analysis
+
+
+###Data Processing
+
+#####Environment
+We will analyze tha data in the following *environment*.
+```{r, echo=FALSE}
+#which system
+sessionInfo()
+#clean working directory
+rm(list=ls(all=T))
+```
+
+To process the data we will start loading the "r" libraries that better fit our needs of processing 
+```{r}
+library(dplyr)
+library(knitr)
+library(curl)
+```
+
+#####Loading Data
+Now it's time to load the data in "R studio" and start their processing.
+The NOAA database regarding weather events between 1950 and 2011 in USA can be downloaded [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2) and the following code allows to load it directly and properly in the enviroment.
+
+```{r}
+fileUrl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+#remember to change the "destfile" according to your specific wd()
+download.file(fileUrl, destfile="/home/fabiofab/datasciencecoursera/StormData.csv.bz2", method = "curl")
+downloadDate <- format(Sys.time(), "%d-%m-%Y-%H:%M:%S")
+Data <- read.csv("StormData.csv.bz2")
+dataComplete <- tbl_df(Data)
+unlink("StormData.csv.bz2")
+dim(dataComplete)
+names(dataComplete)
+```
+The total number of observations for the considered period (1950-2011) is of 902,937 events that have been tracked in 37 different variables whose names are shown above
+
+We start our analysis with a first question on whom we will shape our processing:  
+1. **Across the United States, which types of events are most harmful with respect to population health?**    
+The first step might be to focus on the fatalities due to the different **events**, so we *select* the variables identifying the different kind of registered weather events and the related **fatalities**. The second step of the process consists in *grouping* the different episodes of the same kind of severe weather observations. This will allow us to *summarise* the numbers of these groups that, at that point, will be *arranged* for a proper presentation and downstream analysis.
+
+```{r}
+by_fatalities <- select(dataComplete, EVTYPE, FATALITIES) %>%
+        filter(FATALITIES > 0) %>%
+        group_by(EVTYPE) %>%
+        summarize(topFatal = sum(FATALITIES)) %>%
+        arrange(desc(topFatal))
+```
+
+The same approach can be used to identify the sensitive numbers about **injuries**.
+```{r}
+by_injuries <- select(dataComplete, EVTYPE, INJURIES) %>%
+        filter(INJURIES > 0) %>%
+        group_by(EVTYPE) %>%
+        summarize(topInj = sum(INJURIES)) %>%
+        arrange(desc(topInj))
+```
+At the end of this process we can understand which were the most harmful events in respect of people health, let's now extract from the dataset all the sensitive numbers to answer a second question:  
+  
+  
+2. **Across the United States, which types of events have the greatest economic consequences?**  
+  
+Let's go back to the initial dataset identifying the columns relevant for answering the question.  
+First we need to apply some transformation to the values of the "DMG" columns often shown in the dataset as symbols.
+
+
+```{r}
+multipliers<-c("\"\""=10^0, "-"=10^0, "?"=10^0, "+"=10^0, 
+               "0"=10^0, "1"=10^1, "2"=10^2, "3"=10^3, "4"=10^4, 
+               "5"=10^5, "6"=10^6, "7"=10^7, "8"=10^8, 
+               "h"=10^2, "H"=10^2, "k"=10^3, "K"=10^3, 
+               "m"=10^6, "M"=10^6, "b"=10^9, "B"=10^9)
+dataComplete$PROPDMGEXP <- multipliers[dataComplete$PROPDMGEXP]
+dataComplete$CROPDMGEXP <- multipliers[dataComplete$CROPDMGEXP]
+dataComplete$PROPDMG    <- dataComplete$PROPDMG * dataComplete$PROPDMGEXP
+dataComplete$CROPDMG    <- dataComplete$CROPDMG * dataComplete$CROPDMGEXP
+```
+
+Applying the same strategy as we did above for fatalities and injuries, we identify the most impacting events for *property damage - PROPDMG*....
+```{r}
+propDamage <- select(dataComplete, EVTYPE, PROPDMG)%>%
+                filter(PROPDMG > 0)%>%
+                group_by(EVTYPE)%>%
+                summarize(topPropDmg = sum(PROPDMG))%>%
+                arrange(desc(topPropDmg))
+
+```
+
+...and for *damages to crops - CROPDMG*
+```{r}
+cropDamage <- select(dataComplete, EVTYPE, CROPDMG)%>%
+                filter(CROPDMG > 0)%>%
+                group_by(EVTYPE)%>%
+                summarize(topCropDmg = sum(CROPDMG))%>%
+                arrange(desc(topCropDmg))
+```
+
+We are now ready to show the results of this data processing  
+  
+  
+###Results  
+
+To show the results of the analysis we can use a specific library for plotting
+```{r}
+library(ggplot2)
+```
+
+Here are the Events causing the highest number of fatalities..
+
+```{r}
+print(by_fatalities)
+```
+
+...and injuries
+```{r}
+print(by_injuries)
+```
+
+We can observe a graphic plot confirming that **tornadoes** had the highest impact on public health with the highest number both of *fatalities* and *injuries*. This is a clear answer to our first question
+
+```{r}
+par(mfrow = c(1, 2), mar = c(6, 3, 2,1))
+barplot(by_fatalities$topFatal[1:15], names.arg=by_fatalities$EVTYPE[1:15], las=2, cex.names=0.5, col="blue", ylab = "topFatal")
+barplot(by_injuries$topInj[1:15], names.arg=by_injuries$EVTYPE[1:15], las=2, cex.names=0.5,col="magenta", ylab = "topInj")
+title(main = "TOP 15 Weather Events Impacting USA Public Health (1950-2011)", outer =TRUE, line = -1) 
+```
+
+Let's now show the top Events that had the highest impact on economy, damaging properties...
+```{r}
+print(propDamage)
+```
+
+...and crops
+```{r}
+print(cropDamage)
+```
+
+Again we can summarise these evideces in a plot showing how **tornadoes** had the highest impact on properties with more than 51B $ followed by **floods** with  more than 22B $ while **drought** had the highest impact on crops with 126M $ followed by **hail** and **flood**.
+
+```{r}
+par(mfrow = c(1, 2), mar = c(6, 3, 2,1))
+barplot(propDamage$topPropDmg[1:15], names.arg=propDamage$EVTYPE[1:15], las=2, cex.names=0.5, col="yellow", ylab = "topPropDmg")
+barplot(cropDamage$topCropDmg[1:15], names.arg=cropDamage$EVTYPE[1:15], las=2, cex.names=0.5,col="green", ylab = "topCropDmg")
+title(main = "TOP 15 Weather Events Impacting USA Economy (1950-2011)", outer =TRUE, line = -1) 
+```
+
+Thanks to the available data we could answer these "simple" question but the lesson learnt is even more important while, starting from the same data we could select and analyse data for particular region of the Nation succeeding in optimizing the allocation of resources and efforts for the future both on a local or a National basis. 
+
+                                                                                                             
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
