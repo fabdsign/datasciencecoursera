@@ -133,7 +133,7 @@ print(by_injuries)
 
 We can observe a graphic plot confirming that **tornadoes** had the highest impact on public health with the highest number both of *fatalities* and *injuries*. This is a clear answer to our first question
 
-```{r}
+```{r, fig.height=4, fig.width=9}
 par(mfrow = c(1, 2), mar = c(6, 3, 2,1))
 barplot(by_fatalities$topFatal[1:15], names.arg=by_fatalities$EVTYPE[1:15], las=2, cex.names=0.5, col="blue", ylab = "topFatal")
 barplot(by_injuries$topInj[1:15], names.arg=by_injuries$EVTYPE[1:15], las=2, cex.names=0.5,col="magenta", ylab = "topInj")
@@ -152,7 +152,7 @@ print(cropDamage)
 
 Again we can summarise these evideces in a plot showing how **tornadoes** had the highest impact on properties with more than 51B $ followed by **floods** with  more than 22B $ while **drought** had the highest impact on crops with 126M $ followed by **hail** and **flood**.
 
-```{r}
+```{r, fig.height=4, fig.width=9}
 par(mfrow = c(1, 2), mar = c(6, 3, 2,1))
 barplot(propDamage$topPropDmg[1:15], names.arg=propDamage$EVTYPE[1:15], las=2, cex.names=0.5, col="yellow", ylab = "topPropDmg")
 barplot(cropDamage$topCropDmg[1:15], names.arg=cropDamage$EVTYPE[1:15], las=2, cex.names=0.5,col="green", ylab = "topCropDmg")
